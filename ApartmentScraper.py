@@ -40,6 +40,15 @@ def main(): # Function that starts the rest of the program and sets things up
     for i in range(getPages(region,headers)):
         scrapeSave(headers,apts,wb,region,i+1)
         print("done")
+
+    # Place the headers on top of the columns
+    apts.write(0,0,"Apartment Complex")
+    apts.write(0,1,"Address")
+    apts.write(0,2,"Price")
+    apts.write(0,3,"Beds")
+    apts.write(0,4,"Availability")
+    apts.write(0,5,"URL")
+
     wb.save(region + " Apartments.xls")
 
 def scrapeSave(headers,apts,wb,region,page):
@@ -77,7 +86,7 @@ def scrapeSave(headers,apts,wb,region,page):
         availr += 1
         apts.write(availr,4,avail.text)
 
-    for links in soup.find_all('a',class_ = "property-link js-url"):
+    for links in soup.find_all(lambda tag: tag.name == 'a' and tag.get('class') == ['property-link']):
         global linkr
         linkr += 1
         apts.write(linkr,5,links['href'])
