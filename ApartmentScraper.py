@@ -1,3 +1,4 @@
+import argparse
 import xlwt
 from xlwt import Workbook
 import requests
@@ -9,12 +10,21 @@ ar = 0 # Instantiate the address row variable
 pr = 0 # Instantiate the price row variable
 br = 0 # Instantiate the beds row variable
 availr = 0 #Instantiate the available row variable
+amsr = 0 # Instantiate the amenities row variable
+sqr = 0 # instantiate the square feet row variable
 linkr = 0 # Instantiate the link row variable
+
+# Command line stuff that we can work with later #parser = argparse.ArgumentParser(description="Scrapes Apartments.com for different apartment listings then exports the contents to an Excel file.")
+#parser.add_argument("strings", metavar="Region",type=list,help="The name of the region you would like to search for apartments in. The formatting should be region, city, and state abbreviation. For example Downtown Norfolk Norfolk VA. You can also search by city alone. For example Virginia Beach VA.")
+#parser.add_argument("--minB",nargs="?",type=int,help="Minimum amount of beds")
+#args = parser.parse_args()
 
 # The Anatomy of Apartments.com is as follows:
 # Apartments url/region/bedrooms-price/page number
 # For example:
 # https://www.apartments.com/san-francisco-ca/3-bedrooms-1225-to-1700/2
+
+# BIG TODO Refractor this mess
 
 def main(): # Function that starts the rest of the program and sets things up
 
@@ -47,7 +57,8 @@ def main(): # Function that starts the rest of the program and sets things up
     apts.write(0,2,"Price")
     apts.write(0,3,"Beds")
     apts.write(0,4,"Availability")
-    apts.write(0,5,"URL")
+    apts.write(0,5,"Square Feet")
+    apts.write(0,6,"URL")
 
     wb.save(region + " Apartments.xls")
 
@@ -57,9 +68,7 @@ def scrapeSave(headers,apts,wb,region,page):
     soup = BeautifulSoup(r,"html.parser")
 
     #TODO Figure out if we want to stop the program when
-    # we reach unavailable apartments. Apartments.com does
-    # not list apartments from available to unavailable
-    # so this could be impossible
+    # we reach unavailable apartments.
 
     for titles in soup.find_all(class_ = "js-placardTitle title"):
         global tr
@@ -81,20 +90,38 @@ def scrapeSave(headers,apts,wb,region,page):
         br += 1
         apts.write(br,3,beds.text)
 
-    for avail in soup.find_all(class_ = "availability"):
-        global availr
-        availr += 1
-        apts.write(availr,4,avail.text)
-
     for links in soup.find_all(lambda tag: tag.name == 'a' and tag.get('class') == ['property-link']):
         global linkr
         linkr += 1
-        apts.write(linkr,5,links['href'])
+        apts.write(linkr,6,links['href'])
+        moreInfo(links['href'],apts,wb,headers)
 
+    for avail in soup.find_all(class_ = "availability"):
+        if re.search("Unavailable",avail.text):
+            break
+        else:
+            global availr
+            availr += 1
+            apts.write(availr,4,avail.text)
 
-#TODO getPages will also have to have all of the
-# apartment info such as rooms and price passed to
-# it as well
+def moreInfo(link,apts,wb,h): # This function gets info like amenities and square footage
+   r = requests.get(link,headers=h).text
+   soup = BeautifulSoup(r,"html.parser")
+
+   c = 0
+   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["priceBedRangeInfoInnerContainer"]):
+       if re.search("sq",sq.text):
+           global sqr
+           sqr += 1
+           sqClean = re.sub("\n[\D]\B.*\n","",sq.text)
+           apts.write(sqr,5,sqClean)
+       else:
+           c += 1
+           if c == 4:
+               sqr += 1
+               apts.write(sqr,5,"Square footage not listed")
+               c = 0
+
 def getPages(reg,head):
     reg = re.sub("\b(\s)\b","-",reg) # Substitute whitespace for -
     r = requests.get("https://www.apartments.com/" + reg,headers=head).text # Append the region to the url
