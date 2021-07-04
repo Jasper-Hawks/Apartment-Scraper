@@ -1,9 +1,10 @@
-import argparse
-import xlwt
-from xlwt import Workbook
-import requests
-from bs4 import BeautifulSoup
-import re
+import argparse # Import argparse because eventually I want everything to be handled with commands
+import xlwt # Import xlwt to write to spreadsheets
+from xlwt import Workbook # Import the workbook function of xlwt
+import requests # Import requests so we can request from the Apartments.com site
+from bs4 import BeautifulSoup # Import Beautiful Soup to scrape data from the site
+import re # Import re so we can use regex
+
 tr = 0 # Instantiate the title row variable
 ar = 0 # Instantiate the address row variable
 pr = 0 # Instantiate the price row variable
@@ -13,7 +14,8 @@ amsr = 0 # Instantiate the amenities row variable
 sqr = 0 # instantiate the square feet row variable
 linkr = 0 # Instantiate the link row variable
 
-# Command line stuff that we can work with later #parser = argparse.ArgumentParser(description="Scrapes Apartments.com for different apartment listings then exports the contents to an Excel file.")
+# Command line stuff that we can work with later
+#parser = argparse.ArgumentParser(description="Scrapes Apartments.com for different apartment listings then exports the contents to an Excel file.")
 #parser.add_argument("strings", metavar="Region",type=list,help="The name of the region you would like to search for apartments in. The formatting should be region, city, and state abbreviation. For example Downtown Norfolk Norfolk VA. You can also search by city alone. For example Virginia Beach VA.")
 #parser.add_argument("--minB",nargs="?",type=int,help="Minimum amount of beds")
 #args = parser.parse_args()
@@ -31,13 +33,13 @@ def main(): # Function that starts the rest of the program and sets things up
     maxBeds = 0 # Variable for max bedrooms
     minPrice = 0 # Variable for min price
     maxPrice = 0 # Variable for max price
-    minBedVal = False
-    maxBedVal = False
-    minPriceVal = False
-    maxPriceVal = False
+    minBedVal = False # Variable to see if we have a minBedVal
+    maxBedVal = False # Variable to see if we have a maxBedVal
+    minPriceVal = False# Variable to see if we have a minPriceVal
+    maxPriceVal = False# Variable to see if we have a maxPriceVal
 
-    wb = Workbook()
-    apts = wb.add_sheet("Apartments")
+    wb = Workbook() # Instantiate the workbook
+    apts = wb.add_sheet("Apartments") # Instantiate a sheet named apts that we will write data to
 
     userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.143 Safari/537.36'
     headers = {"User-Agent":userAgent}
@@ -47,8 +49,6 @@ def main(): # Function that starts the rest of the program and sets things up
     # TODO Replace all input methods with command line
     # arguments
 
-    #TODO Eventually we will convert the mins and maxes to strings and then pass them to the Scrape Save function
-    # for now we should focus on basic functionality
     region = input("Region:") # Get the region from the user
 
     try: # Try to assign min beds to an int
@@ -82,6 +82,7 @@ def main(): # Function that starts the rest of the program and sets things up
     if minPrice > maxPrice:
         print("Invalid minimum price")
         exit()
+
     # This portion of the code base converts the inputs into data
     # that we can insert into the URL
 
@@ -90,20 +91,27 @@ def main(): # Function that starts the rest of the program and sets things up
     if type(maxPrice) is int:
         maxPriceVal = True
 
-    if minPriceVal is True and maxPriceVal is True: # Then if they are both true
+    # These statements format the prices the way that Apartments.com formats them
+    if minPriceVal is True and maxPriceVal is True:
 
-        price = str(minPrice) + "-to-" + str(maxPrice) # price equals this string
+        # If we have a range format it this way
+        price = str(minPrice) + "-to-" + str(maxPrice)
 
     elif minPriceVal is True and maxPriceVal is False:
 
+        # Just the minimum price format it this way
         price = "over-" + str(minPrice)
 
     elif minPriceVal is False and maxPriceVal is True:
 
+        # Just the maximum price format it this way
         price = "under-" + str(maxPrice)
 
     else:
+        # Otherwise leave it blank
         price = ""
+
+    # Repeat this with beds
 
     if type(minBeds) is int:
         minBedVal = True
@@ -112,7 +120,6 @@ def main(): # Function that starts the rest of the program and sets things up
 
     if minBedVal is True and maxBedVal is True:
 
-        # TODO If the program is acting strangely remove the - from bedrooms
         beds = str(minBeds) + "-to-" + str(maxBeds) + "-bedrooms-"
 
     elif minBedVal is True and maxBedVal is False:
@@ -126,9 +133,13 @@ def main(): # Function that starts the rest of the program and sets things up
     else:
         beds = ""
 
+    # getPages will return an int with a value that will act as the range for the for loop
     for i in range(getPages(region,headers,beds,price)):
+        # Once we have the amount of pages we have to scrape
+        # we use that as an argument in the url to change
+        # pages
         scrapeSave(headers,apts,wb,region,i+1,price,beds)
-        print("done")
+        print("Page " + str(i + 1) + ": Done")
 
     # Place the headers on top of the columns
     apts.write(0,0,"Apartment Complex")
@@ -138,23 +149,24 @@ def main(): # Function that starts the rest of the program and sets things up
     apts.write(0,4,"Availability")
     apts.write(0,5,"Square Feet")
     apts.write(0,6,"URL")
+    apts.write(0,8,"Thanks for using Apartment Scraper. Check out more of my projects on my website: https://jasperhawks.netlify.app/")
 
-    wb.save(region + " Apartments.xls")
+    wb.save(region + " Apartments.xls") # Save the worksheet as the region name + apartments.xls
 
-def scrapeSave(headers,apts,wb,region,page,p,beds):
-    # TODO Eventually remove str from all of the passed arguments like p and beds
-    region = re.sub("\b(\s)\b","-",region) # Substitute whitespace for -
-    r = requests.get("https://www.apartments.com/" + region +"/" + str(beds) +  str(p) + "/" +  str(page)+ "/",headers=headers).text # Append the region to the url
-    soup = BeautifulSoup(r,"html.parser")
+def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the majority of the content
+    # substitute whitespace for -
+    region = re.sub("\b(\s)\b","-",region)
 
-    #TODO Figure out if we want to stop the program when
-    # we reach unavailable apartments.
+    # Append arguments to the url
+    r = requests.get("https://www.apartments.com/" + region +"/" + beds +  p + "/" +  str(page)+ "/",headers=headers).text
+    soup = beautifulsoup(r,"html.parser")
 
-    for titles in soup.find_all(class_ = "js-placardTitle title"):
+    for titles in soup.find_all(class_ = "js-placardtitle title"): # Find all divs with this class
         global tr
-        tr += 1
-        apts.write(tr,0,titles.text)
+        tr += 1 # Increment the title row variable
+        apts.write(tr,0,titles.text) # Write the data to the spreadsheet
 
+    # This is repeated for all items
     for adresses in soup.find_all(class_ = "property-address js-url"):
         global ar
         ar += 1
@@ -174,46 +186,48 @@ def scrapeSave(headers,apts,wb,region,page,p,beds):
         global linkr
         linkr += 1
         apts.write(linkr,6,links['href'])
-        moreInfo(links['href'],apts,wb,headers)
+        moreinfo(links['href'],apts,wb,headers)
 
     for avail in soup.find_all(class_ = "availability"):
-        if re.search("Unavailable",avail.text): break
+        if re.search("unavailable",avail.text): break
         else:
             global availr
             availr += 1
             apts.write(availr,4,avail.text)
 
-def moreInfo(link,apts,wb,h): # This function gets info like amenities and square footage
-   r = requests.get(link,headers=h).text
-   soup = BeautifulSoup(r,"html.parser")
+# TODO Eventually I want to also scrape amenities but I'll handle this later
 
-   c = 0
-   # TODO Square footage isnt behaving correctly again
-   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["priceBedRangeInfoInnerContainer"]):
-       if re.search("sq",sq.text):
+def moreinfo(link,apts,wb,h): # This function gets the square footage
+   r = requests.get(link,headers=h).text # Use the link we used previously
+   soup = beautifulsoup(r,"html.parser")
+
+   c = 0 # Instantiate a counter variable
+   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["pricebedrangeinfoinnercontainer"]): # Find the four boxes with different data
+       if re.search("sq",sq.text): # If the data has sq in its text
            global sqr
-           sqr += 1
-           sqClean = re.sub("\n[\D]\B.*\n","",sq.text)
-           apts.write(sqr,5,sqClean)
-       else:
-           c += 1
-           if c == 4:
-               sqr += 1
-               apts.write(sqr,5,"Square footage not listed")
-               c = 0
+           sqr += 1 # Increment the square footage row variable
+           sqclean = re.sub("\n[\d]\b.*\n","",sq.text) # Remove the title text
+           apts.write(sqr,5,sqclean) # Write the rest to the cell
+       else: # Otherwise
+           c += 1 # Instantiate the counter variable
+           if c == 4: # Since there are four boxes if we go through all four
+               sqr += 1 # Increment the square footage variable by one
+               apts.write(sqr,5,"square footage not listed") # Write Square footage not listed to the cell
+               c = 0 # Reset the counter variable
 
-def getPages(reg,head,b,p):
-    reg = re.sub("\b(\s)\b","-",reg) # Substitute whitespace for -
-    print("https://www.apartments.com/" + reg + "/" + b + p)
-    r = requests.get("https://www.apartments.com/" + reg + "/" + b + p,headers=head).text # Append the region to the url
+def getpages(reg,head,b,p): # Function to get the number of pages we have to scrape
+    reg = re.sub("\b(\s)\b","-",reg) # substitute whitespace for -
+    r = requests.get("https://www.apartments.com/" + reg + "/" + b + p,headers=head).text # Append the region, price, and beds to the url
     soup = BeautifulSoup(r,"html.parser")
 
     try:
-        num = soup.find(class_ = "pageRange").text
-    except:
-        return 1
+        num = soup.find(class_ = "pageRange").text # Try to find the page range div
+    except: # If there is none then we have no extra pages to scrape
+        return 1 # So return one for the first page
+
+    # Since the page range is formatted Page 1 of X then we have to use regex to get rid of the Page 1 of
     num = re.sub("^\S*\s\d*....","",num)
-    return int(num)
+    return int(num) # Return the int
 
 if __name__ == "__main__":
     main()
