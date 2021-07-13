@@ -159,7 +159,7 @@ def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the 
 
     # Append arguments to the url
     r = requests.get("https://www.apartments.com/" + region +"/" + beds +  p + "/" +  str(page)+ "/",headers=headers).text
-    soup = beautifulsoup(r,"html.parser")
+    soup = BeautifulSoup(r,"html.parser") 
 
     for titles in soup.find_all(class_ = "js-placardtitle title"): # Find all divs with this class
         global tr
@@ -199,7 +199,7 @@ def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the 
 
 def moreinfo(link,apts,wb,h): # This function gets the square footage
    r = requests.get(link,headers=h).text # Use the link we used previously
-   soup = beautifulsoup(r,"html.parser")
+   soup = BeautifulSoup(r,"html.parser")
 
    c = 0 # Instantiate a counter variable
    for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["pricebedrangeinfoinnercontainer"]): # Find the four boxes with different data
@@ -215,7 +215,7 @@ def moreinfo(link,apts,wb,h): # This function gets the square footage
                apts.write(sqr,5,"square footage not listed") # Write Square footage not listed to the cell
                c = 0 # Reset the counter variable
 
-def getpages(reg,head,b,p): # Function to get the number of pages we have to scrape
+def getPages(reg,head,b,p): # Function to get the number of pages we have to scrape
     reg = re.sub("\b(\s)\b","-",reg) # substitute whitespace for -
     r = requests.get("https://www.apartments.com/" + reg + "/" + b + p,headers=head).text # Append the region, price, and beds to the url
     soup = BeautifulSoup(r,"html.parser")
