@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+
+# Author: Jasper Hawks
+# 
+# ArgumentScraper the file that handles
+# scraping apartments.com for listings
+# and exporting them to a spreadsheet
+
 import argparse # Import argparse because eventually I want everything to be handled with commands
 import xlwt # Import xlwt to write to spreadsheets
 from xlwt import Workbook # Import the workbook function of xlwt
@@ -33,7 +41,6 @@ args = parser.parse_args()
 # For example:
 # https://www.apartments.com/san-francisco-ca/3-bedrooms-1225-to-1700/2
 
-# BIG TODO Refractor this mess
 
 def main(): # Function that starts the rest of the program and sets things up
 
@@ -53,28 +60,16 @@ def main(): # Function that starts the rest of the program and sets things up
     headers = {"User-Agent":userAgent}
     # These two lines spoof our user agent since apartments.com filters requests by user agent
 
-
-    # TODO Replace all input methods with command line
-    # arguments
-
     region = args.Region # Get the region from the user
 
-    #TODO Remove except since we don't need to check the values
+    minBeds = args.minB
 
-    try: # Try to assign min beds to an int
-        minBeds = args.minB
-    except ValueError: # If the user leaves minBeds blank
-        minBeds = "" # Make it an empty string
-
-    if minBeds == -1:
+    if minBeds <= 0:
         minBeds = ""
 
-    try:
-        maxBeds = args.maxB 
-    except ValueError:
-        maxBeds = ""
+    maxBeds = args.maxB 
 
-    if maxBeds == -1:
+    if maxBeds <= 0:
         maxBeds = ""
 
     try:
@@ -85,27 +80,21 @@ def main(): # Function that starts the rest of the program and sets things up
     except TypeError:
         pass
 
-    try:
-        minPrice = args.minP
-    except ValueError:
+    minPrice = args.minP
+
+    if minPrice <= 0:
         minPrice = ""
 
-    if minPrice == -1:
-        minPrice = ""
+    maxPrice = args.maxP
 
-    try:
-        maxPrice = args.maxP
-    except ValueError:
-        maxPrice = ""
-
-    if maxPrice == -1:
+    if maxPrice <= 0:
         maxPrice = ""
 
     try:
         if minPrice > maxPrice:
             print("Invalid minimum price")
             exit()
-    except: 
+    except TypeError: 
         pass
 
     # This portion of the code base converts the inputs into data
@@ -179,9 +168,6 @@ def main(): # Function that starts the rest of the program and sets things up
     wb.save(region + " Apartments.xls") # Save the worksheet as the region name + apartments.xls
 
 def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the majority of the content
-    # TODO Remove this since the user is supposed to use dashes
-    # substitute whitespace for -
-    region = re.sub("\b(\s)\b","-",region)
 
     # Append arguments to the url
     r = requests.get("https://www.apartments.com/" + region +"/" + beds +  p + "/" +  str(page)+ "/",headers=headers).text
@@ -222,14 +208,12 @@ def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the 
             availr += 1
             apts.write(availr,4,avail.text)
 
-# TODO Eventually I want to also scrape amenities but I'll handle this later
-
 def moreinfo(link,apts,wb,h): # This function gets the square footage
    r = requests.get(link,headers=h).text # Use the link we used previously
    soup = BeautifulSoup(r,"html.parser")
 
    c = 0 # Instantiate a counter variable
-   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["priceBedRangeInfoInnerContainer"]): # Find the four boxes with different data
+   for sq in soup.find_all(class_ = "rentInfoDetail"): # Find the four boxes with different data
        if re.search("sq",sq.text): # If the data has sq in its text
            global sqr
            sqr += 1 # Increment the square footage row variable
@@ -239,7 +223,7 @@ def moreinfo(link,apts,wb,h): # This function gets the square footage
            c += 1 # Instantiate the counter variable
            if c == 4: # Since there are four boxes if we go through all four
                sqr += 1 # Increment the square footage variable by one
-               apts.write(sqr,5,"square footage not listed") # Write Square footage not listed to the cell
+               apts.write(sqr,5,"Square footage not listed") # Write Square footage not listed to the cell
                c = 0 # Reset the counter variable
 
 def getPages(reg,head,b,p): # Function to get the number of pages we have to scrape
