@@ -14,11 +14,19 @@ amsr = 0 # Instantiate the amenities row variable
 sqr = 0 # instantiate the square feet row variable
 linkr = 0 # Instantiate the link row variable
 
-# Command line stuff that we can work with later
-#parser = argparse.ArgumentParser(description="Scrapes Apartments.com for different apartment listings then exports the contents to an Excel file.")
-#parser.add_argument("strings", metavar="Region",type=list,help="The name of the region you would like to search for apartments in. The formatting should be region, city, and state abbreviation. For example Downtown Norfolk Norfolk VA. You can also search by city alone. For example Virginia Beach VA.")
-#parser.add_argument("--minB",nargs="?",type=int,help="Minimum amount of beds")
-#args = parser.parse_args()
+
+# Instantiate a parser so that we can use positional arguments on the command line
+parser = argparse.ArgumentParser(description="Scrapes Apartments.com for different apartment listings then exports the contents to an Excel file.")
+
+# Add arguments to the parser starting with the name of the argument, the nargs which allows optional or required arguments, the type then the help text.
+parser.add_argument("Region", metavar="Region",type=str,help="The name of the region you would like to search for apartments in separated by -. The formatting should be region, city, and state abbreviation. For example Downtown-Norfolk-Norfolk-VA. You can also search by city alone. For example Virginia-Beach-VA.")
+parser.add_argument("--minB",nargs="?",type=int,help="Minimum amount of beds",default=-1)
+parser.add_argument("--maxB",nargs="?",type=int,help="Maximum amount of beds",default=-1)
+parser.add_argument("--minP",nargs="?",type=int,help="Minimum amount of prices",default=-1)
+parser.add_argument("--maxP",nargs="?",type=int,help="Maximum amount of prices",default=-1)
+
+# Then args will store all of our arguments so that we can use them throughout the program
+args = parser.parse_args()
 
 # The Anatomy of Apartments.com is as follows:
 # Apartments url/region/bedrooms-price/page number
@@ -49,16 +57,24 @@ def main(): # Function that starts the rest of the program and sets things up
     # TODO Replace all input methods with command line
     # arguments
 
-    region = input("Region:") # Get the region from the user
+    region = args.Region # Get the region from the user
+
+    #TODO Remove except since we don't need to check the values
 
     try: # Try to assign min beds to an int
-        minBeds = int(input("Min Beds (Blank by default):"))
+        minBeds = args.minB
     except ValueError: # If the user leaves minBeds blank
         minBeds = "" # Make it an empty string
 
+    if minBeds == -1:
+        minBeds = ""
+
     try:
-        maxBeds = int(input("Max Beds (Blank by default):"))
+        maxBeds = args.maxB 
     except ValueError:
+        maxBeds = ""
+
+    if maxBeds == -1:
         maxBeds = ""
 
     try:
@@ -70,18 +86,27 @@ def main(): # Function that starts the rest of the program and sets things up
         pass
 
     try:
-        minPrice = int(input("Min Price (Blank by default):"))
+        minPrice = args.minP
     except ValueError:
         minPrice = ""
 
+    if minPrice == -1:
+        minPrice = ""
+
     try:
-        maxPrice = int(input("Max Price (Blank by default):"))
+        maxPrice = args.maxP
     except ValueError:
         maxPrice = ""
 
-    if minPrice > maxPrice:
-        print("Invalid minimum price")
-        exit()
+    if maxPrice == -1:
+        maxPrice = ""
+
+    try:
+        if minPrice > maxPrice:
+            print("Invalid minimum price")
+            exit()
+    except: 
+        pass
 
     # This portion of the code base converts the inputs into data
     # that we can insert into the URL
@@ -124,11 +149,11 @@ def main(): # Function that starts the rest of the program and sets things up
 
     elif minBedVal is True and maxBedVal is False:
 
-        beds = "min-" + str(minBeds) + "-bedrooms"
+        beds = "min-" + str(minBeds) + "-bedrooms-"
 
     elif minBedVal is False and maxBedVal is True:
 
-        beds = "max-" + str(maxBeds) + "-bedrooms"
+        beds = "max-" + str(maxBeds) + "-bedrooms-"
 
     else:
         beds = ""
@@ -154,6 +179,7 @@ def main(): # Function that starts the rest of the program and sets things up
     wb.save(region + " Apartments.xls") # Save the worksheet as the region name + apartments.xls
 
 def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the majority of the content
+    # TODO Remove this since the user is supposed to use dashes
     # substitute whitespace for -
     region = re.sub("\b(\s)\b","-",region)
 
@@ -161,7 +187,7 @@ def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the 
     r = requests.get("https://www.apartments.com/" + region +"/" + beds +  p + "/" +  str(page)+ "/",headers=headers).text
     soup = BeautifulSoup(r,"html.parser") 
 
-    for titles in soup.find_all(class_ = "js-placardtitle title"): # Find all divs with this class
+    for titles in soup.find_all(class_ = "js-placardTitle title"): # Find all divs with this class
         global tr
         tr += 1 # Increment the title row variable
         apts.write(tr,0,titles.text) # Write the data to the spreadsheet
@@ -189,7 +215,8 @@ def scrapeSave(headers,apts,wb,region,page,p,beds): # Function that scrapes the 
         moreinfo(links['href'],apts,wb,headers)
 
     for avail in soup.find_all(class_ = "availability"):
-        if re.search("unavailable",avail.text): break
+        if re.search("unavailable",avail.text):
+           break
         else:
             global availr
             availr += 1
@@ -202,7 +229,7 @@ def moreinfo(link,apts,wb,h): # This function gets the square footage
    soup = BeautifulSoup(r,"html.parser")
 
    c = 0 # Instantiate a counter variable
-   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["pricebedrangeinfoinnercontainer"]): # Find the four boxes with different data
+   for sq in soup.find_all(lambda tag: tag.name == "div" and tag.get("class") == ["priceBedRangeInfoInnerContainer"]): # Find the four boxes with different data
        if re.search("sq",sq.text): # If the data has sq in its text
            global sqr
            sqr += 1 # Increment the square footage row variable
